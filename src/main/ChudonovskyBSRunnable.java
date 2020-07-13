@@ -6,33 +6,79 @@ import org.apfloat.Apfloat;
 import org.apfloat.ApfloatMath;
 import org.apfloat.ApintMath;
 
+import javax.swing.plaf.basic.BasicPasswordFieldUI;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChudonovskyBSRunnable implements Runnable {
 
-    Range range
-    private Apfloat sum;
+    private final Range range;
+    private List<Apfloat> toSum;
+    private final long precision;
     private final int threadIndex;
     private final boolean quietMode;
+    private final Apfloat DIGITS_PER_TERM;
 
-    public ChudonovskyBSRunnable(Range range, List<Pair<Apfloat, Apfloat>> sum, int index, boolean quietMode) {
+    public ChudonovskyBSRunnable(Range range, long precision, List<Apfloat> toSum, Apfloat DIGITS_PER_TERM, int index, boolean quietMode) {
         this.range = range;
-        this.termSums = termSums;
+        this.toSum = toSum;
         this.threadIndex = index;
         this.quietMode = quietMode;
+        this.precision = precision;
+        this.DIGITS_PER_TERM = DIGITS_PER_TERM;
     }
 
+    @Override
     public void run() {
 
-        if (!quietMode) System.out.println("Thread-" + threadIndex + " started.");
+        if (!this.quietMode) System.out.println("Thread-" + this.threadIndex + " started.");
         long start = System.currentTimeMillis();
 
+        TupleApfloat PQT = BS(this.range.start, this.range.end);
+        System.out.println(this + "-a:" + this.range.start + "-b:" + this.range.end);
 
+        Apfloat one = ApfloatMath.pow(new Apfloat(10), DIGITS_PER_TERM);
+
+        Apfloat sqrtTenThousandAndFive = ApfloatMath.sqrt(new Apfloat(10005L, precision + 1));
+        this.toSum.add(PQT.getQ().multiply(new Apfloat(426880L)).multiply(sqrtTenThousandAndFive).divide(PQT.getT()));
 
         long finish = System.currentTimeMillis();
-        if (!quietMode) {
-            System.out.println("Thread-" + threadIndex + " stopped.");
-            System.out.println("Thread-" + threadIndex + " execution time was(millis): " + (finish - start));
+        if (!this.quietMode) {
+            System.out.println("Thread-" + this.threadIndex + " stopped.");
+            System.out.println("Thread-" + this.threadIndex + " execution time was(millis): " + (finish - start));
         }
+    }
+    private TupleApfloat BS(long a, long b) {
+        System.out.println(this + "-a:" + a + "-b:" + b);
+        Apfloat two = new Apfloat(2L);
+        Apfloat five = new Apfloat(5L);
+        Apfloat six = new Apfloat(6L);
+        Apfloat C = new Apfloat(640320L);
+        Apfloat C3_OVER_24 = (C.multiply(C).multiply(C)).divide(new Apfloat(24, this.precision));
+        Apfloat Pab, Qab, Tab;
+        if((b - a) == 1)
+        {
+            if(a == 0) {
+                Pab = new Apfloat(1L);
+                Qab = new Apfloat(1L);
+            }
+            else {
+                Pab = new Apfloat(6 * a - 5).multiply(new Apfloat(2 * a - 1)).multiply(new Apfloat(6 * a - 1));
+                Qab = new Apfloat(a * a * a).multiply(C3_OVER_24);
+            }
+            Tab = Pab.multiply(new Apfloat(13591409L).add(new Apfloat(545140134L).multiply(new Apfloat(a))));
+            if((a&1) == 1){
+                Tab = Tab.multiply(new Apfloat(-1L));
+            }
+        }
+        else{
+            long m = (a+b)/2;
+            TupleApfloat am = BS(a, m);
+            TupleApfloat mb = BS(m, b);
+            Pab = am.getP().multiply(mb.getP());
+            Qab = am.getQ().multiply(mb.getQ());
+            Tab = mb.getQ().multiply(am.getT()).add(am.getP().multiply(mb.getT()));
+        }
+        return new TupleApfloat(Pab, Qab, Tab);
     }
 }
