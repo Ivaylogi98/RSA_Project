@@ -13,13 +13,13 @@ import java.util.List;
 public class ChudonovskyBSRunnable implements Runnable {
 
     private final Range range;
-    private List<Apfloat> toSum;
+    private List<Pair<TupleApfloat, Integer>> toSum;
     private final long precision;
     private final int threadIndex;
     private final boolean quietMode;
     private final Apfloat DIGITS_PER_TERM;
 
-    public ChudonovskyBSRunnable(Range range, long precision, List<Apfloat> toSum, Apfloat DIGITS_PER_TERM, int index, boolean quietMode) {
+    public ChudonovskyBSRunnable(Range range, long precision, List<Pair<TupleApfloat, Integer>> toSum, Apfloat DIGITS_PER_TERM, int index, boolean quietMode) {
         this.range = range;
         this.toSum = toSum;
         this.threadIndex = index;
@@ -38,9 +38,13 @@ public class ChudonovskyBSRunnable implements Runnable {
         System.out.println(this + "-a:" + this.range.start + "-b:" + this.range.end);
 
         Apfloat one = ApfloatMath.pow(new Apfloat(10), DIGITS_PER_TERM);
+        Pair<TupleApfloat, Integer> toAdd = new ImmutablePair<>(PQT, threadIndex);
+        this.toSum.add(toAdd);
+        //System.out.println(PQT.getP() + " " + PQT.getQ() + " " + PQT.getT());
+        System.out.println("thread" + toAdd.getRight());
 
-        Apfloat sqrtTenThousandAndFive = ApfloatMath.sqrt(new Apfloat(10005L, precision + 1));
-        this.toSum.add(PQT.getQ().multiply(new Apfloat(426880L)).multiply(sqrtTenThousandAndFive).divide(PQT.getT()));
+        //Apfloat sqrtTenThousandAndFive = ApfloatMath.sqrt(new Apfloat(10005L, precision + 1));
+        //this.toSum.add(PQT.getQ().multiply(new Apfloat(426880L)).multiply(sqrtTenThousandAndFive).divide(PQT.getT()));
 
         long finish = System.currentTimeMillis();
         if (!this.quietMode) {
@@ -49,7 +53,7 @@ public class ChudonovskyBSRunnable implements Runnable {
         }
     }
     private TupleApfloat BS(long a, long b) {
-        System.out.println(this + "-a:" + a + "-b:" + b);
+        //System.out.println(this + "-a:" + a + "-b:" + b);
         Apfloat two = new Apfloat(2L);
         Apfloat five = new Apfloat(5L);
         Apfloat six = new Apfloat(6L);
