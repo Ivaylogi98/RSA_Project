@@ -9,6 +9,7 @@ import org.apfloat.ApintMath;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.security.DigestException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
@@ -61,7 +62,7 @@ public class Chudonovsky {
         }
         long start = System.currentTimeMillis();
         Apfloat pi = calculatePiBS(precision, numberOfThreads, quietMode);
-        System.out.println("pi " + pi);
+        long finish = System.currentTimeMillis();
         try {
             FileWriter myWriter = new FileWriter(outputFile);
             myWriter.write(String.valueOf(pi));
@@ -70,7 +71,6 @@ public class Chudonovsky {
             System.out.println("An error occurred.");
             e.printStackTrace();
         }
-        long finish = System.currentTimeMillis();
         if (!quietMode) System.out.println("Threads used in current run: " + numberOfThreads);
 
         System.out.println("Total execution time for current run was: " + (finish - start));
@@ -100,6 +100,7 @@ public class Chudonovsky {
 
         return Chudonovsky.merge(termSums, precision);
     }
+
     public static Apfloat calculatePi(long precision) {
         // need one extra place for the 3, and one extra place for some rounding issues
         precision = precision + 2;
@@ -139,18 +140,18 @@ public class Chudonovsky {
     }
 
     public static Apfloat calculatePiBS(long precision, int numberOfThreads, boolean quietMode) {
-        Apfloat C = new Apfloat(640320L);
-        Apfloat C3_OVER_24 = (C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
-        Apfloat DIGITS_PER_TERM = ApfloatMath.log(C3_OVER_24.divide(new Apfloat(72, precision)), new Apfloat(10L));
+        //Apfloat C = new Apfloat(640320L);
+        //Apfloat C3_OVER_24 = new Apfloat( 10939058860032000L); //C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
+
+        Apfloat DIGITS_PER_TERM = new Apfloat(1.41816474627254e1); //ApfloatMath.log(new Apfloat(151931373056000L, 15), new Apfloat(10L));
         long N = (new Apfloat(precision).divide(DIGITS_PER_TERM).add(Apfloat.ONE)).longValue();
 
         List<Range> ranges = Chudonovsky.calculateTermRangesBS(numberOfThreads, N);
-        System.out.println("N" + N);
-        List<Pair<TupleApfloat, Integer>> toSum = new ArrayList<>(ranges.size());
+
+        List<Pair<TupleApfloat, Integer>> toSum = Collections.synchronizedList(new ArrayList<>());
         Thread[] tr = new Thread[numberOfThreads];
+        long start = System.currentTimeMillis();
         for (int index = 0; index < numberOfThreads; index++) {
-            System.out.println(ranges.get(index).start);
-            System.out.println(ranges.get(index).end);
             ChudonovskyBSRunnable r = new ChudonovskyBSRunnable(ranges.get(index), precision, toSum, DIGITS_PER_TERM, index, quietMode);
             Thread t = new Thread(r);
             tr[index] = t;
@@ -163,6 +164,8 @@ public class Chudonovsky {
                 System.out.println("Something went wrong.");
             }
         }
+        System.out.println("Threads: " + (System.currentTimeMillis() - start));
+        start = System.currentTimeMillis();
         Apfloat finalP = Apfloat.ONE;
         Apfloat finalQ = Apfloat.ONE;
         Apfloat finalT = Apfloat.ONE;
@@ -172,10 +175,9 @@ public class Chudonovsky {
                 finalP = toSum.get(i).getLeft().p;
                 finalQ = toSum.get(i).getLeft().q;
                 finalT = toSum.get(i).getLeft().t;
-                System.out.println(toSum.get(i).getRight());
+                break;
             }
         }
-        //PQT.add(BS(0, N));
         for(int i = 1; i < toSum.size(); i++) {
             for (int j = 0; j < numberOfThreads; j++){
                 Apfloat currentP;
@@ -185,8 +187,6 @@ public class Chudonovsky {
                     currentP = toSum.get(j).getLeft().getP();
                     currentQ = toSum.get(j).getLeft().getQ();
                     currentT = toSum.get(j).getLeft().getT();
-                    //System.out.println(currentP + " " + currentQ + " " + currentT + " " + toSum.get(0).getRight());
-                    System.out.println(toSum.get(j).getRight());
                     finalT = currentQ.multiply(finalT).add(finalP.multiply(currentT));
                     finalP = finalP.multiply(currentP);
                     finalQ = finalQ.multiply(currentQ);
@@ -195,31 +195,24 @@ public class Chudonovsky {
             }
         }
         Apfloat sqrtTenThousandAndFive = ApfloatMath.sqrt(new Apfloat(10005L, precision + 1));
+        System.out.println("Merge: " + (System.currentTimeMillis() - start));
         return (finalQ).multiply(new Apfloat(426880L)).multiply(sqrtTenThousandAndFive).divide(finalT);
-//        Apfloat one = ApfloatMath.pow(new Apfloat(10), DIGITS_PER_TERM);
-//
-//        Apfloat sqrtTenThousandAndFive = ApfloatMath.sqrt(new Apfloat(10005L, precision + 1));
-//        return (PQT.getQ()).multiply(new Apfloat(426880L)).multiply(sqrtTenThousandAndFive).divide(PQT.getT());
     }
     public static Apfloat calculatePiBS(long precision, boolean quietMode) {
-        Apfloat C = new Apfloat(640320L);
-        Apfloat C3_OVER_24 = (C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
+        //Apfloat C = new Apfloat(640320L);
+        Apfloat C3_OVER_24 = new Apfloat( 10939058860032000L); //C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
         Apfloat DIGITS_PER_TERM = ApfloatMath.log(C3_OVER_24.divide(new Apfloat(72, precision)), new Apfloat(10L));
         long N = (new Apfloat(precision).divide(DIGITS_PER_TERM).add(Apfloat.ONE)).longValue();
 
         TupleApfloat PQT = BS(0, N, true);
-        Apfloat one = ApfloatMath.pow(new Apfloat(10), DIGITS_PER_TERM);
 
         Apfloat sqrtTenThousandAndFive = ApfloatMath.sqrt(new Apfloat(10005L, precision + 1));
         return (PQT.getQ()).multiply(new Apfloat(426880L)).multiply(sqrtTenThousandAndFive).divide(PQT.getT());
     }
 
     private static TupleApfloat BS(long a, long b, boolean flag) {
-        Apfloat two = new Apfloat(2L);
-        Apfloat five = new Apfloat(5L);
-        Apfloat six = new Apfloat(6L);
-        Apfloat C = new Apfloat(640320L);
-        Apfloat C3_OVER_24 = (C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
+        //Apfloat C = new Apfloat(640320L);
+        Apfloat C3_OVER_24 = new Apfloat( 10939058860032000L); //C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
         Apfloat Pab, Qab, Tab;
         if((b - a) == 1)
         {
@@ -260,8 +253,8 @@ public class Chudonovsky {
 
         List<Range> ranges = new ArrayList<>();
 
-        Apfloat C = new Apfloat(640320L);
-        Apfloat C3_OVER_24 = (C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
+        //Apfloat C = new Apfloat(640320L);
+        Apfloat C3_OVER_24 = new Apfloat( 10939058860032000L); //C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
         Apfloat DIGITS_PER_TERM = ApfloatMath.log(C3_OVER_24.divide(new Apfloat(72, precision)), new Apfloat(10L));
 
         long numberOfTerms = (new Apfloat(precision, precision)).divide(DIGITS_PER_TERM).ceil().longValue();
@@ -288,11 +281,11 @@ public class Chudonovsky {
         }
 
         List<Range> ranges = new ArrayList<>();
-        long rangeSize = iterations / numberOfRanges;
+        long rangeSize = (int) Math.ceil((double)iterations / numberOfRanges);
         for (int i = 0; i < iterations; i += rangeSize)
         {
             long lower = i;
-            long upper = i + rangeSize;  ///////////////////////////////////////////////////////probably - 1 ??????????????
+            long upper = i + rangeSize;
             lower = Math.min(lower, iterations);
             upper = Math.min(upper, iterations);
             ranges.add(new Range(lower, upper));
