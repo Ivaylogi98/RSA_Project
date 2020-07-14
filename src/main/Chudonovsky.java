@@ -20,6 +20,7 @@ public class Chudonovsky {
     static private boolean quietMode = false;
     static private int numberOfThreads = 1;
     static private int precision = 100;
+    static private int granularity = 1;
     static private String outputFile = "pi.txt";
 
     public static void main (String[] args) {
@@ -58,10 +59,18 @@ public class Chudonovsky {
                 case "-q":
                     quietMode = true;
                     break;
+                case "-g":
+                    outputFile = args[i + 1];
+                    try {
+                        granularity = Integer.parseInt(args[i + 1]);
+                    } catch (NumberFormatException e) {
+                        granularity = 1;
+                    }
+                    break;
             }
         }
         long start = System.currentTimeMillis();
-        Apfloat pi = calculatePiBS(precision, numberOfThreads, quietMode);
+        Apfloat pi = calculatePiBS(precision, numberOfThreads, quietMode, granularity);
         long finish = System.currentTimeMillis();
         try {
             FileWriter myWriter = new FileWriter(outputFile);
@@ -139,29 +148,31 @@ public class Chudonovsky {
         return pi;
     }
 
-    public static Apfloat calculatePiBS(long precision, int numberOfThreads, boolean quietMode) {
+    public static Apfloat calculatePiBS(long precision, int numberOfThreads, boolean quietMode, int granularity) {
         //Apfloat C = new Apfloat(640320L);
         //Apfloat C3_OVER_24 = new Apfloat( 10939058860032000L); //C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
 
         Apfloat DIGITS_PER_TERM = new Apfloat(1.41816474627254e1); //ApfloatMath.log(new Apfloat(151931373056000L, 15), new Apfloat(10L));
         long N = (new Apfloat(precision).divide(DIGITS_PER_TERM).add(Apfloat.ONE)).longValue();
 
-        List<Range> ranges = Chudonovsky.calculateTermRangesBS(numberOfThreads, N);
+        List<Range> ranges = Chudonovsky.calculateTermRangesBS(numberOfThreads * granularity, N);
 
         List<Pair<TupleApfloat, Integer>> toSum = Collections.synchronizedList(new ArrayList<>());
         Thread[] tr = new Thread[numberOfThreads];
         long start = System.currentTimeMillis();
-        for (int index = 0; index < numberOfThreads; index++) {
-            ChudonovskyBSRunnable r = new ChudonovskyBSRunnable(ranges.get(index), precision, toSum, DIGITS_PER_TERM, index, quietMode);
-            Thread t = new Thread(r);
-            tr[index] = t;
-            t.start();
-        }
-        for(int i = 0; i < numberOfThreads; i++) {
-            try {
-                tr[i].join();
-            } catch (InterruptedException e) {
-                System.out.println("Something went wrong.");
+        for(int iter = 0; iter < granularity; iter++) {
+            for (int index = 0; index < numberOfThreads; index++) {
+                ChudonovskyBSRunnable r = new ChudonovskyBSRunnable(ranges.get( iter*numberOfThreads + index), precision, toSum, DIGITS_PER_TERM, index, quietMode);
+                Thread t = new Thread(r);
+                tr[index] = t;
+                t.start();
+            }
+            for (int i = 0; i < numberOfThreads; i++) {
+                try {
+                    tr[i].join();
+                } catch (InterruptedException e) {
+                    System.out.println("Something went wrong.");
+                }
             }
         }
         System.out.println("Threads: " + (System.currentTimeMillis() - start));

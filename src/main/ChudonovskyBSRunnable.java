@@ -46,8 +46,8 @@ public class ChudonovskyBSRunnable implements Runnable {
         }
     }
     private TupleApfloat BS(long a, long b) {
-        Apfloat C = new Apfloat(640320L);
-        Apfloat C3_OVER_24 = (C.multiply(C).multiply(C)).divide(new Apfloat(24, this.precision));
+        //Apfloat C = new Apfloat(640320L);
+        Apfloat C3_OVER_24 = new Apfloat( 10939058860032000L); //C.multiply(C).multiply(C)).divide(new Apfloat(24, precision));
         Apfloat Pab, Qab, Tab;
         if((b - a) == 1)
         {
