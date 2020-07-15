@@ -60,7 +60,6 @@ public class Chudonovsky {
                     quietMode = true;
                     break;
                 case "-g":
-                    outputFile = args[i + 1];
                     try {
                         granularity = Integer.parseInt(args[i + 1]);
                     } catch (NumberFormatException e) {
@@ -156,19 +155,24 @@ public class Chudonovsky {
         long N = (new Apfloat(precision).divide(DIGITS_PER_TERM).add(Apfloat.ONE)).longValue();
 
         List<Range> ranges = Chudonovsky.calculateTermRangesBS(numberOfThreads * granularity, N);
-
+        int rangesSize = ranges.size();
+        //System.out.println("N: " + N);
+        //System.out.println("ranges actual: " + ranges.size() + " theoretical:" + (numberOfThreads * granularity));
         List<Pair<TupleApfloat, Integer>> toSum = Collections.synchronizedList(new ArrayList<>());
         Thread[] tr = new Thread[numberOfThreads];
         long start = System.currentTimeMillis();
         for(int iter = 0; iter < granularity; iter++) {
             for (int index = 0; index < numberOfThreads; index++) {
-                ChudonovskyBSRunnable r = new ChudonovskyBSRunnable(ranges.get( iter*numberOfThreads + index), precision, toSum, DIGITS_PER_TERM, index, quietMode);
+                //System.out.println("iter * numOfThr + index = " + (iter * numberOfThreads + index));
+                if(iter*numberOfThreads + index >= rangesSize) break;
+                ChudonovskyBSRunnable r = new ChudonovskyBSRunnable(ranges.get( iter*numberOfThreads + index ), precision, toSum, DIGITS_PER_TERM, iter*numberOfThreads + index, quietMode, ranges);
                 Thread t = new Thread(r);
                 tr[index] = t;
                 t.start();
             }
             for (int i = 0; i < numberOfThreads; i++) {
                 try {
+                    if(iter*numberOfThreads + i >= rangesSize) break;
                     tr[i].join();
                 } catch (InterruptedException e) {
                     System.out.println("Something went wrong.");
@@ -180,7 +184,7 @@ public class Chudonovsky {
         Apfloat finalP = Apfloat.ONE;
         Apfloat finalQ = Apfloat.ONE;
         Apfloat finalT = Apfloat.ONE;
-        for (int i = 0; i < numberOfThreads; i++){
+        for (int i = 0; i < toSum.size(); i++){
             if(toSum.get(i).getRight() == 0)
             {
                 finalP = toSum.get(i).getLeft().p;
@@ -190,7 +194,7 @@ public class Chudonovsky {
             }
         }
         for(int i = 1; i < toSum.size(); i++) {
-            for (int j = 0; j < numberOfThreads; j++){
+            for (int j = 0; j < toSum.size(); j++){
                 Apfloat currentP;
                 Apfloat currentQ;
                 Apfloat currentT;
@@ -300,7 +304,9 @@ public class Chudonovsky {
             lower = Math.min(lower, iterations);
             upper = Math.min(upper, iterations);
             ranges.add(new Range(lower, upper));
+            //System.out.print("l: " + lower + "-" + upper + " ");
         }
+        //System.out.println("ranges: " + ranges.size());
         return ranges;
     }
 

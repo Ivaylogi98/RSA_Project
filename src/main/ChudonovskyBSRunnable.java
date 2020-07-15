@@ -18,14 +18,16 @@ public class ChudonovskyBSRunnable implements Runnable {
     private final int threadIndex;
     private final boolean quietMode;
     private final Apfloat DIGITS_PER_TERM;
+    private List<Range> ranges;
 
-    public ChudonovskyBSRunnable(Range range, long precision, List<Pair<TupleApfloat, Integer>> toSum, Apfloat DIGITS_PER_TERM, int index, boolean quietMode) {
+    public ChudonovskyBSRunnable(Range range, long precision, List<Pair<TupleApfloat, Integer>> toSum, Apfloat DIGITS_PER_TERM, int index, boolean quietMode, List<Range> ranges) {
         this.range = range;
         this.toSum = toSum;
         this.threadIndex = index;
         this.quietMode = quietMode;
         this.precision = precision;
         this.DIGITS_PER_TERM = DIGITS_PER_TERM;
+        this.ranges = ranges;
     }
 
     @Override
@@ -33,8 +35,13 @@ public class ChudonovskyBSRunnable implements Runnable {
 
         if (!this.quietMode) System.out.println("Thread-" + this.threadIndex + " started.");
         long start = System.currentTimeMillis();
-
-        TupleApfloat PQT = BS(this.range.start, this.range.end);
+        //System.out.println(threadIndex + " range: " + range.start + "-" + range.end);
+//        Range r = this.range;
+//        if(!ranges.isEmpty()) {
+//            r = ranges.get(0);
+//            ranges.remove(0);
+//        }
+        TupleApfloat PQT = BS(range.start, range.end);
 
         Pair<TupleApfloat, Integer> toAdd = new ImmutablePair<>(PQT, threadIndex);
         this.toSum.add(toAdd);
