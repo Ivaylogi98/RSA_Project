@@ -187,9 +187,9 @@ public class Chudonovsky {
         for (int i = 0; i < toSum.size(); i++){
             if(toSum.get(i).getRight() == 0)
             {
-                finalP = toSum.get(i).getLeft().p;
-                finalQ = toSum.get(i).getLeft().q;
-                finalT = toSum.get(i).getLeft().t;
+                finalP = toSum.get(i).getLeft().getP();
+                finalQ = toSum.get(i).getLeft().getQ();
+                finalT = toSum.get(i).getLeft().getT();
                 break;
             }
         }
